@@ -337,17 +337,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "malcolm-rust"
-version = "0.1.0"
-dependencies = [
- "futures",
- "hyper",
- "rand",
- "redis",
- "tokio",
-]
-
-[[package]]
 name = "matches"
 version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -731,6 +720,18 @@ dependencies = [
  "idna",
  "matches",
  "percent-encoding",
+]
+
+[[package]]
+name = "vuvuzela"
+version = "0.1.0"
+dependencies = [
+ "futures",
+ "hyper",
+ "rand",
+ "redis",
+ "tokio",
+ "url",
 ]
 
 [[package]]
