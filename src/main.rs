@@ -1,6 +1,7 @@
 use std::convert::Infallible;
 use std::env;
 use std::net::SocketAddr;
+use hyper::server::conn::AddrStream;
 use hyper::{Server};
 use hyper::service::{make_service_fn, service_fn};
 use redis::AsyncCommands;
@@ -29,10 +30,9 @@ async fn main() {
     // creates one from our `hello_world` function.
     
     let srv = server::Server::new();
-    srv.routes();
-    let make_svc = make_service_fn(|_conn| async {
+    let make_svc = make_service_fn(|_conn: &AddrStream| async {
         // service_fn converts our function into a `Service`
-        Ok::<_, Infallible>(service_fn())
+        Ok::<_, Infallible>(service_fn(|req| async { srv.routes(req) }))
     });
 
     if env::var("LIGHTHOUSE_URL").is_ok() {
