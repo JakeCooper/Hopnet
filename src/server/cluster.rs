@@ -1,6 +1,7 @@
 use std::{collections::HashMap};
 use serde::{Serialize, Deserialize};
 use std::env;
+use rand::{Rng, distributions::Alphanumeric};
 
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -55,7 +56,7 @@ pub fn gen_key(length: usize) -> String {
 
 impl Cluster {
     pub fn new() -> Self {
-        let c = Cluster {
+        let mut c = Cluster {
             participants: HashMap::new(),
             data: HashMap::new(),
         };
