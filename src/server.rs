@@ -1,7 +1,6 @@
 
 use hyper::{Body, Request, Method, StatusCode, Response};
 use std::{collections::HashMap};
-use rand::{Rng, distributions::Alphanumeric};
 
 use self::cluster::GetResponse;
 
@@ -9,12 +8,12 @@ use self::cluster::GetResponse;
 static MISSING: &[u8] = b"Missing field";
 static NOT_FOUND: &[u8] = b"Not Found";
 static EMPTY: &[u8] = b"";
+#[allow(dead_code)]
 static UNAUTHORIZED: &[u8] = b"Unauthorized";
 
 mod requests;
 
 mod cluster;
-#[allow(dead_code)]
 pub struct Server {
     cluster: cluster::Cluster,
     // ip: String,

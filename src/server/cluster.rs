@@ -95,9 +95,9 @@ impl Cluster {
             None => return Ok(())
         }
     }
-
+    #[allow(dead_code)]
     pub fn get_participants(&self) {
-        let s: Vec<String> = self.participants.keys().map(|f| f.clone()).collect();
+        let _s: Vec<String> = self.participants.keys().map(|f| f.clone()).collect();
     }
 
     pub fn put(&mut self, key: String, value: String) {
