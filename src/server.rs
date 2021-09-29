@@ -21,6 +21,7 @@ pub struct Server {
     // port: i32,
 }
 
+
 impl Server {
     pub fn new() -> Self {
         Server {
@@ -38,14 +39,9 @@ impl Server {
     
             (&Method::POST, "/join") => {
                 let s: cluster::JoinRequest = requests::get_body(req).await.unwrap();
-                let action_key = rand::thread_rng()
-                    .sample_iter(&Alphanumeric)
-                    .take(16)
-                    .map(char::from)
-                    .collect();
                 
-                match self.cluster.join(s.address, &action_key) {
-                    Ok(_) => Ok(Response::new(Body::from(action_key))),
+                match self.cluster.join(s.address) {
+                    Ok(key) => Ok(Response::new(Body::from(key))),
                     Err(e) => Ok(Response::builder()
                         .status(StatusCode::UNAUTHORIZED)
                         .body(e.into())

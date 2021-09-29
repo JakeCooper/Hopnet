@@ -1,8 +1,7 @@
 use std::{collections::HashMap};
-use reqwest::Client;
 use serde::{Serialize, Deserialize};
-use std::thread;
-use uuid::Uuid;
+use std::env;
+
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct JoinRequest {
@@ -45,20 +44,40 @@ pub struct Cluster {
     data: Data,
 }
 
+pub fn gen_key(length: usize) -> String {
+    let action_key = rand::thread_rng()
+        .sample_iter(&Alphanumeric)
+        .take(length)
+        .map(char::from)
+        .collect();
+    return action_key;
+}
+
 impl Cluster {
     pub fn new() -> Self {
-        Cluster {
+        let c = Cluster {
             participants: HashMap::new(),
             data: HashMap::new(),
+        };
+        match env::var("MAGNET_URL") {
+            Ok(address) => {
+                match c.join(address) {
+                    Ok(key) => println!("Joined lighthouse with key {}", key),
+                    Err(e) => println!("Err: Failed to join lighthouse\t{}", &e)
+                }
+            },
+            _ => (),
         }
+        return c;
     }
 
-    pub fn join(&mut self, address: String, key: &String) -> Result<(), String> {
+    pub fn join(&mut self, address: String) -> Result<String, String> {
+        let key = gen_key(16);
         if self.participants.get(&address).is_some() {
             return Err("Actor already present. Request /depart with your key to leave cluster".to_string())
         }
         self.participants.insert(address, key.to_string());
-        return Ok(());
+        return Ok(key);
     }
 
     pub fn depart(&mut self, address: String, key: &String) -> Result<(), String> {

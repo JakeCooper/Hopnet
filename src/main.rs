@@ -29,7 +29,6 @@ async fn main() {
     
     let srv = Arc::new(Mutex::new(server::Server::new()));
 
-    // Join lighthouse if available
     let make_svc = make_service_fn(|_conn| {
         let srv = srv.clone();
         let svc_fn = service_fn(move |req| {
