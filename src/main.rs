@@ -1,15 +1,13 @@
 use std::convert::Infallible;
 use std::env;
 use std::net::SocketAddr;
-use hyper::server::conn::AddrStream;
+use std::sync::Arc;
+use futures::lock::Mutex;
 use hyper::{Server};
 use hyper::service::{make_service_fn, service_fn};
-use redis::AsyncCommands;
 use rand::Rng;
 
 mod server;
-
-mod client;
 
 fn rand_between(m: i32, n: i32) -> i32 {
     rand::thread_rng().gen_range(m..n)
@@ -29,31 +27,22 @@ async fn main() {
     // A `Service` is needed for every connection, so this
     // creates one from our `hello_world` function.
     
-    let srv = server::Server::new();
-    let make_svc = make_service_fn(|_conn: &AddrStream| async {
-        // service_fn converts our function into a `Service`
-        Ok::<_, Infallible>(service_fn(|req| async { srv.routes(req) }))
-    });
+    let srv = Arc::new(Mutex::new(server::Server::new()));
 
-    if env::var("LIGHTHOUSE_URL").is_ok() {
-        // Attempt to join lighthouse
-    }
+    // Join lighthouse if available
+    let make_svc = make_service_fn(|_conn| {
+        let srv = srv.clone();
+        let svc_fn = service_fn(move |req| {
+            let srv = srv.clone();
+            async move {
+                srv.lock().await.routes(req).await
+            }
+        });
+        async move { Ok::<_, Infallible>(svc_fn) }
+    });
 
     let server = Server::bind(&addr).serve(make_svc);
 
-    let client = client::redis().await;
-
-
-    let mut conn = client.get_async_connection().await.unwrap();
-
-    let _: () = conn.set("key", "testing").await.unwrap();
-
-    let val: Option<String> = conn.get("key").await.unwrap();
-
-    match val {
-        Some(s) => println!("Value is {}", s),
-        _ => (),
-    };
 
     println!("Started on port {}", port);
 
