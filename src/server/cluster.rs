@@ -1,11 +1,17 @@
 use std::{collections::HashMap};
+use hyper::StatusCode;
 use serde::{Serialize, Deserialize};
 use std::env;
 use rand::{Rng, distributions::Alphanumeric};
 
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct JoinRequest {
+    pub local_address: String,
+    pub remote_address: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PingRequest {
     pub address: String,
 }
 
@@ -45,6 +51,25 @@ pub struct Cluster {
     data: Data,
 }
 
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum ClusterError {
+    // Empty Address Error
+    #[error("Address cannot be empty")]
+    EmptyAddress,
+
+    #[error("Actor {0} already present. Request /depart with your key to leave cluster")]
+    NoopError(String),
+
+    #[error("Failed to ping cluster")]
+    ConnectionError(),
+
+    /// Failed to fire a connection request.
+    #[error(transparent)]
+    RequestError(#[from] reqwest::Error),
+}
+
 pub fn gen_key(length: usize) -> String {
     let action_key = rand::thread_rng()
         .sample_iter(&Alphanumeric)
@@ -55,14 +80,14 @@ pub fn gen_key(length: usize) -> String {
 }
 
 impl Cluster {
-    pub fn new() -> Self {
+    pub async fn new(local_address: String) -> Self {
         let mut c = Cluster {
             participants: HashMap::new(),
             data: HashMap::new(),
         };
         match env::var("MAGNET_URL") {
-            Ok(address) => {
-                match c.join(address) {
+            Ok(remote_address) => {
+                match c.join(JoinRequest {local_address, remote_address}).await {
                     Ok(key) => println!("Joined lighthouse with key {}", key),
                     Err(e) => println!("Err: Failed to join lighthouse\t{}", &e)
                 }
@@ -72,12 +97,29 @@ impl Cluster {
         return c;
     }
 
-    pub fn join(&mut self, address: String) -> Result<String, String> {
-        let key = gen_key(16);
-        if self.participants.get(&address).is_some() {
-            return Err("Actor already present. Request /depart with your key to leave cluster".to_string())
+    pub async fn join(&mut self, req: JoinRequest) -> Result<String, ClusterError> {
+        let JoinRequest {remote_address, local_address} = req;
+        if remote_address.len() == 0 {
+            return Err(ClusterError::EmptyAddress)
         }
-        self.participants.insert(address, key.to_string());
+        let key = gen_key(16);
+        if self.participants.get(&remote_address).is_some() {
+            return Err(ClusterError::NoopError(remote_address))
+        }
+        let jr = PingRequest {
+            address: local_address,
+        };
+        let res = reqwest::Client::new()
+            .post(format!("http://{}/ping", remote_address))
+            .json(&jr)
+            .send()
+            .await?;
+
+        match res.status() {
+            StatusCode::OK => (),
+            _ => return Err(ClusterError::ConnectionError())
+        }
+        self.participants.insert(remote_address, key.to_string());
         return Ok(key);
     }
 

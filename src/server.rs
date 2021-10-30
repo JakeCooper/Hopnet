@@ -1,6 +1,10 @@
 
 use hyper::{Body, Request, Method, StatusCode, Response};
+use std::net::SocketAddr;
 use std::{collections::HashMap};
+use std::env;
+use rand::Rng;
+
 
 use self::cluster::GetResponse;
 
@@ -15,16 +19,31 @@ mod requests;
 
 mod cluster;
 pub struct Server {
+    pub addr: std::net::SocketAddr,
     cluster: cluster::Cluster,
-    // ip: String,
-    // port: i32,
 }
 
+fn rand_between(m: i32, n: i32) -> i32 {
+    rand::thread_rng().gen_range(m..n)
+}
 
 impl Server {
-    pub fn new() -> Self {
+    pub async fn new() -> Self {
+        let port = match env::var("PORT") {
+            Ok(v) => match v.parse::<i32>() {
+                Ok(v) => v,
+                Err(_) => rand_between(5555, 8080),
+            },
+            Err(_) => rand_between(5555, 8080),
+        };
+        let server_details = format!("127.0.0.1:{}", port);
+        let addr: SocketAddr = server_details
+            .parse()
+            .expect("Unable to parse socket address");
+    
         Server {
-            cluster: cluster::Cluster::new(),
+            cluster: cluster::Cluster::new(addr.to_string()).await,
+            addr: addr, 
         }
     }
 
@@ -38,14 +57,19 @@ impl Server {
     
             (&Method::POST, "/join") => {
                 let s: cluster::JoinRequest = requests::get_body(req).await.unwrap();
-                
-                match self.cluster.join(s.address) {
+                match self.cluster.join(s).await {
                     Ok(key) => Ok(Response::new(Body::from(key))),
                     Err(e) => Ok(Response::builder()
                         .status(StatusCode::UNAUTHORIZED)
-                        .body(e.into())
+                        .body(e.to_string().into())
                         .unwrap())
                 }
+            }
+
+            (&Method::POST, "/ping") => {
+                let s: cluster::PingRequest = requests::get_body(req).await.unwrap();
+                println!("Noise received from {}", s.address);
+                Ok(Response::new("Ok!".into()))
             }
 
             (&Method::POST, "/depart") => {
