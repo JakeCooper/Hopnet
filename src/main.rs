@@ -31,17 +31,17 @@ async fn main() {
         .parse()
         .expect("Unable to parse socket address");
     
-    let cluster = Arc::new(Mutex::new(Cluster::new()));
+    let ctx = Arc::new(Context {
+        cluster: Mutex::new(Cluster::new())
+    });
 
     // Create a handle and move that to maintain ownership
-    let c = &cluster;
+    let c = &ctx;
 
     let make_svc = make_service_fn(move |_conn| {
-        let cluster = c.clone();
+        let ctx = c.clone();
         let svc_fn = service_fn(move |req| {
-            let ctx = Context {
-                cluster: cluster.clone(),
-            };
+            let ctx = ctx.clone();
             async move {
                 server::serve(ctx, req).await
             }
@@ -53,7 +53,7 @@ async fn main() {
     let server = Server::bind(&addr).serve(make_svc);
     match env::var("MAGNET_URL") {
         Ok(remote_address) => {
-            match cluster.lock().await.join(JoinRequest {local_address: addr.to_string(), remote_address}).await {
+            match ctx.cluster.lock().await.join(JoinRequest {local_address: addr.to_string(), remote_address}).await {
                 Ok(key) => println!("Joined lighthouse with key {}", key),
                 Err(e) => println!("Err: Failed to join lighthouse\t{}", &e)
             }

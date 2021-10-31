@@ -16,10 +16,10 @@ static EMPTY: &[u8] = b"";
 static UNAUTHORIZED: &[u8] = b"Unauthorized";
 
 pub struct Context {
-    pub cluster: Arc<Mutex<cluster::Cluster>>,
+    pub cluster: Mutex<cluster::Cluster>,
 }
 
-pub async fn serve(ctx: Context, req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
+pub async fn serve(ctx: Arc<Context>, req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
     match (req.method(), req.uri().path()) {
         // Serve some instructions at /
         (&Method::GET, "/") => Ok(Response::new(Body::from(
