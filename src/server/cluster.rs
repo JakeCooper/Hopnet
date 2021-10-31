@@ -1,7 +1,6 @@
 use std::{collections::HashMap};
 use hyper::StatusCode;
 use serde::{Serialize, Deserialize};
-use std::env;
 use rand::{Rng, distributions::Alphanumeric};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -80,21 +79,11 @@ pub fn gen_key(length: usize) -> String {
 }
 
 impl Cluster {
-    pub async fn new(local_address: String) -> Self {
-        let mut c = Cluster {
+    pub fn new() -> Self {
+        return Cluster {
             participants: HashMap::new(),
             data: HashMap::new(),
         };
-        match env::var("MAGNET_URL") {
-            Ok(remote_address) => {
-                match c.join(JoinRequest {local_address, remote_address}).await {
-                    Ok(key) => println!("Joined lighthouse with key {}", key),
-                    Err(e) => println!("Err: Failed to join lighthouse\t{}", &e)
-                }
-            },
-            _ => (),
-        }
-        return c;
     }
 
     pub async fn join(&mut self, req: JoinRequest) -> Result<String, ClusterError> {
