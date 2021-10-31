@@ -22,25 +22,35 @@ pub struct Context {
 pub async fn serve(ctx: Arc<Context>, req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
     match (req.method(), req.uri().path()) {
         // Serve some instructions at /
-        (&Method::GET, "/") => Ok(Response::new(Body::from(
-            "Try POSTing data to /echo such as: `curl localhost:3000/echo -XPOST -d 'hello world'`",
-        ))),
+        (&Method::GET, "/") => Ok(
+            Response::builder()
+                .status(StatusCode::OK)
+                .body("Nothing here".into())
+                .unwrap()
+        ),
 
         (&Method::POST, "/join") => {
             let s: cluster::JoinRequest = requests::get_body(req).await.unwrap();
             match ctx.cluster.lock().await.join(s).await {
                 Ok(key) => Ok(Response::new(Body::from(key))),
-                Err(e) => Ok(Response::builder()
-                    .status(StatusCode::UNAUTHORIZED)
-                    .body(e.to_string().into())
-                    .unwrap())
+                Err(e) => Ok(
+                    Response::builder()
+                        .status(StatusCode::UNAUTHORIZED)
+                        .body(e.to_string().into())
+                        .unwrap()
+                )
             }
         }
 
         (&Method::POST, "/ping") => {
             let s: cluster::PingRequest = requests::get_body(req).await.unwrap();
             println!("Noise received from {}", s.address);
-            Ok(Response::new("Ok!".into()))
+            Ok(
+                Response::builder()
+                    .status(StatusCode::OK)
+                    .body("OK!".to_string().into())
+                    .unwrap()
+            )
         }
 
         (&Method::POST, "/depart") => {
@@ -48,10 +58,12 @@ pub async fn serve(ctx: Arc<Context>, req: Request<Body>) -> Result<Response<Bod
             
             match ctx.cluster.lock().await.depart(s.address, &s.key) {
                 Ok(_) => Ok(Response::new(Body::from(EMPTY))),
-                Err(e) => Ok(Response::builder()
-                    .status(StatusCode::UNAUTHORIZED)
-                    .body(e.into())
-                    .unwrap())
+                Err(e) => Ok(
+                    Response::builder()
+                        .status(StatusCode::UNAUTHORIZED)
+                        .body(e.to_string().into())
+                        .unwrap()
+                )
             }
         }
 
@@ -78,21 +90,25 @@ pub async fn serve(ctx: Arc<Context>, req: Request<Body>) -> Result<Response<Bod
             let res = GetResponse {
                 value: value.unwrap()
             };
-            return Ok(Response::builder()
-                .status(StatusCode::OK)
-                .header("Content-Type", "application/json")
-                .body(serde_json::to_string(&res).unwrap().into())
-                .unwrap())
+            return Ok(
+                Response::builder()
+                    .status(StatusCode::OK)
+                    .header("Content-Type", "application/json")
+                    .body(serde_json::to_string(&res).unwrap().into())
+                    .unwrap()
+            )
        
         }
 
         (&Method::POST, "/data") => {
             let s: cluster::PutRequest = requests::get_body(req).await.unwrap();
             ctx.cluster.lock().await.put(s.key, s.value);
-            Ok(Response::builder()
-                .status(StatusCode::OK)
-                .body(EMPTY.into())
-                .unwrap())
+            Ok(
+                Response::builder()
+                    .status(StatusCode::OK)
+                    .body(EMPTY.into())
+                    .unwrap()
+            )
         }
 
         // Return the 404 Not Found for other routes.
